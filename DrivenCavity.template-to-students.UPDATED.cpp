@@ -494,6 +494,38 @@ void bndry( Array3& u )
 /* !************************************************************** */
 /* !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 /* !************************************************************** */
+ 
+/* Note: The vector of primitive variables is:  */
+    /*              u = [p, u, v]^T               */
+
+for(j = 0; j<jmax; i++)
+    
+	{
+                u(0,j,1) = zero; /*Ux = 0 Left wall*/
+		u(0,j,2) = zero; /*Uy = 0 Left wall*/
+
+                u(imax,j,1) = zero; /*Ux = 0 Right wall*/
+		u(imax,j,2) = zero; /*Uy = 0 Right wall*/
+
+		/*Pressure */
+ 		u(imax,j,0) = 2* u(imax-1,j,0) - u(imax-2,j,0);  /*Pressure at Right wall*/
+ 		u(0,j,0) = 2* u(1,j,0) - u(2,j,0); /*Pressure at left wall*/
+
+            }
+
+
+for(i = 0; i<imax; i++)
+
+	{
+	    u(i,0,1) = zero; /*Ux = 0 bottom wall*/
+	    u(i,0,2) = zero; /*Uy = 0 bottom wall*/
+	
+	    u(i,0,0) = 2* u(i,1,0) - u(i,2,0);  /*Pressure at bottom wall*/
+
+            u(i, jmax-1, 1) = uinf;  /* Initialize lid (top) to freestream velocity */
+        }
+
+
 
 
 
