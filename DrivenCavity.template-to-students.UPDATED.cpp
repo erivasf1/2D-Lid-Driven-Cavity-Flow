@@ -498,7 +498,7 @@ void bndry( Array3& u )
 /* Note: The vector of primitive variables is:  */
     /*              u = [p, u, v]^T               */
 
-for(j = 0; j<jmax; i++)
+for(j = 0; j<jmax; j++)
     
 	{
                 u(0,j,1) = zero; /*Ux = 0 Left wall*/
@@ -885,6 +885,35 @@ void compute_time_step( Array3& u, Array2& dt, double& dtmin )
 /* !************************************************************** */
 
 
+  //------Diffusive time step (CONSTANT AT ALL NODES!)-----------------
+  double rnu = rmu*rhoinv; //kinematic viscosity
+  dtvisc = (dx*dy)/(4*rnu); //diffusive time step
+
+  //--------Convective time step (DEPENDS PER NODE!)----------------
+
+  for (j=0;j<jmax;j++){ //NESTED FOR LOOP - LOOKS AT EVERY NODE
+    for (i=0;i<imax;i++){
+
+      uvel2 = pow(u(i,j,1),2.0) + pow(u(i,j,2),2.0);
+      beta2 = fmax(rkappa * pow(uinf,2.0),uvel2);
+      
+      //x-velocity
+      lambda_x = 0.5*(abs(u(i,j,1))+sqrt(uvel2+4*beta2));
+
+      //y-velocity
+      lambda_y = 0.5*(abs(u(i,j,2))+sqrt(uvel2+4*beta2));
+
+      lambda_max=(lambda_x>lambda_y)? lambda_x:lambda_y; // sets the larger lambda value to lambda max
+
+      
+      dtconv = fmin(dx,dy)/lambda_max; //computes local convective time step
+      
+//------------Minimum Time Step------------------------
+      dtmin = cfl * fmin(dtconv,dtvisc); //computes the minimum time step
+      dt(i,j) = dtmin; //adds the minimum time step to dt array
+
+    }
+  }
 
 }  
 
