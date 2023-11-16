@@ -1079,10 +1079,42 @@ void point_Jacobi( Array3& u, Array3& uold, Array2& viscx, Array2& viscy, Array2
 /* !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 /* !************************************************************** */
 
+    int i;
+    int j;
 
+for(int i=1; i<imax-1; i++){
+        for(j=1; j<jmax-1; j++){
+            dpdx = (u(i+1,j,0)-u(i-1,j,0))/(2*dx);
+            dpdy = (u(i,j+1,0)-u(i,j-1,0))/(2*dy);
 
+            dudx = (u(i+1,j,1)-u(i-1,j,1))/(2*dx);
+            dudy = (u(i,j+1,1)-u(i,j-1,1))/(2*dy);
+
+            dvdx = (u(i+1,j,2)-u(i-1,j,2))/(2*dx);
+            dvdy = (u(i,j+1,2)-u(i,j-1,2))/(2*dy);
+
+            d2udx2 = (u(i+1,j,1)-2*u(i,j,1)+u(i-1,j,1))/(dx*dx);
+            d2udy2 = (u(i,j+1,1)-2*u(i,j,1)+u(i,j-1,1))/(dy*dy);
+
+            d2vdx2 = (u(i+1,j,2)-2*u(i,j,2)+u(i-1,j,2))/(dx*dx);
+            d2vdy2 = (u(i,j+1,2)-2*u(i,j,2)+u(i,j-1,2))/(dy*dy);
+
+            uvel2 = (u(i,j,1)*u(i,j,1))+ (u(i,j,2)*u(i,j,2));
+
+            beta2 = fmax(uvel2,rkappa*uinf);
+
+            u(i,j,0) = uold(i,j,0)- (beta2*dt(i,j)*((rho*dudx)+ (rho*dvdy)-viscx(i,j)-viscy(i,j)));
+
+            u(i,j,1) = uold(i,j,1) - ((dt(i,j)*rhoinv)*((rho*uold(i,j,1)*dudx) + (rho*uold(i,j,2)*dudy) +(dpdx)-(rmu *d2udx2)-(rmu*d2udy2)));
+
+            u(i,j,2) = uold(i,j,2) - ((dt(i,j)*rhoinv)*((rho*uold(i,j,2)*dvdx) + (rho*uold(i,j,1)*dvdy) +(dpdy)-(rmu *d2vdx2)-(rmu*d2vdy2)));
+
+        }
+}
 
 }
+
+
 
 /**************************************************************************/
 
