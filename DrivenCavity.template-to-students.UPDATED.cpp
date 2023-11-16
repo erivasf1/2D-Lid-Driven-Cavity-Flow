@@ -937,7 +937,36 @@ void Compute_Artificial_Viscosity( Array3& u, Array2& viscx, Array2& viscy )
 /* !************************************************************** */
 /* !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 /* !************************************************************** */
+for(i=1; i<imax-1; i++)
+{
+	for(j=1; j<jmax-1; j++)
+	{
+	    uvel2 = u(i,j,1)* u(i,j,1) + u(i,j,2)* u(i,j,2);
 
+        beta2 = fmax(uvel2,rkappa*uinf);
+
+        lambda_x = 0.5 * (fabs(u(i,j,1)) +  sqrt(uvel2 + 4*beta2));
+
+        lambda_y = 0.5 * (fabs(u(i,j,2)) +  sqrt(uvel2 + 4*beta2));
+
+        d4pdx4 = (u(i+2,j,0) - 4*u(i+1,j,0) + 6*u(i,j,0) - 4*u(i-1,j,0) + u(i-2,j,0))/ double(dx);
+
+        /*cout<< "d4pdx4="<< d4pdx4<<endl;*/
+
+        d4pdy4 = (u(i,j+2,0) - 4*u(i,j+1,0) + 6*u(i,j,0) - 4*u(i,j-1,0) + u(i,j-2,0))/ double(dy);
+
+        /* cout<< "d4pdy4="<< d4pdy4<<endl;*/
+
+        viscx(i,j) = -fabs(lambda_x)* Cx2 *double(dx*dx*dx)*d4pdx4/beta2;
+
+
+        viscy(i,j) = -fabs(lambda_y)* Cy2 *double(dy*dy*dy)*d4pdy4/beta2;
+
+
+        cout<< "viscx="<< viscx(i,j)<<endl;
+        cout<< "viscy="<< viscy(i,j)<<endl;
+}
+}
 
 
 }
