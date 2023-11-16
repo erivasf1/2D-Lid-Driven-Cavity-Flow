@@ -884,7 +884,32 @@ void compute_time_step( Array3& u, Array2& dt, double& dtmin )
 /* !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 /* !************************************************************** */
 
+for(i=1; i<imax-1; i++)
+{
+	for(j=1; j<jmax-1; j++)
+	{
 
+	uvel2 = u(i,j,1)* u(i,j,1) + u(i,j,2)* u(i,j,2);
+
+	beta2 = fmax(uvel2,rkappa*uinf);
+
+	lambda_x = 0.5 * (fabs(u(i,j,1)) +  sqrt(uvel2 + 4*beta2));
+
+	lambda_y = 0.5 * (fabs(u(i,j,2)) +  sqrt(uvel2 + 4*beta2));
+
+	lambda_max = (lambda_x > lambda_y)? lambda_x:lambda_y;
+	
+	/*cout << "lambda_x = " << lambda_max << endl;*/
+	dtconv = fmin(dx, dy)/lambda_max ;
+	
+	dtvisc = dx*dy/(4*rmu*rhoinv);
+	
+	dtmin = cfl*fmin(dtconv, dtvisc);
+	
+	dt(i,j) = dtmin;
+
+	}
+}
 
 }  
 
