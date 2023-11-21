@@ -499,35 +499,44 @@ void bndry( Array3& u )
     /*              u = [p, u, v]^T               */
 
 for(j = 0; j<jmax; j++)
-    
+
 	{
-                u(0,j,1) = zero; /*Ux = 0 Left wall*/
+        u(0,j,1) = zero; /*Ux = 0 Left wall*/
 		u(0,j,2) = zero; /*Uy = 0 Left wall*/
 
-                u(imax,j,1) = zero; /*Ux = 0 Right wall*/
-		u(imax,j,2) = zero; /*Uy = 0 Right wall*/
+        u(imax-1,j,1) = zero; /*Ux = 0 Right wall*/
+		u(imax-1,j,2) = zero; /*Uy = 0 Right wall*/
 
 		/*Pressure */
- 		u(imax,j,0) = 2* u(imax-1,j,0) - u(imax-2,j,0);  /*Pressure at Right wall*/
- 		u(0,j,0) = 2* u(1,j,0) - u(2,j,0); /*Pressure at left wall*/
+ 		u(imax-1,j,0) = two* u(imax-2,j,0) - u(imax-3,j,0);  /*Pressure at Right wall*/
+
+
+
+ 		u(0,j,0) = two* u(1,j,0) - u(2,j,0); /*Pressure at left wall*/
+
 
             }
 
 
-for(i = 0; i<imax; i++)
+for(i = 1; i<imax-1; i++)
 
 	{
 	    u(i,0,1) = zero; /*Ux = 0 bottom wall*/
 	    u(i,0,2) = zero; /*Uy = 0 bottom wall*/
-	
-	    u(i,0,0) = 2* u(i,1,0) - u(i,2,0);  /*Pressure at bottom wall*/
 
-            u(i, jmax-1, 1) = uinf;  /* Initialize lid (top) to freestream velocity */
+	    u(i,0,0) = two* u(i,1,0) - u(i,2,0);  /*Pressure at bottom wall*/
+        /*cout<<u(i,0,0)<< endl;*/
+
+
+
+        u(i, jmax-1, 1) = uinf;  /* Initialize lid (top) to freestream velocity */
+        u(i, jmax-1, 2) = 0; /*Initialize lid top UY = 0*/
+        u(i, jmax-1, 0) = two * u(i,jmax-2,0) - u(i,jmax-3,0); /*Pressure at top wall*/
+
+
+
+
         }
-
-
-
-
 
 }
 
@@ -1156,38 +1165,43 @@ void point_Jacobi( Array3& u, Array3& uold, Array2& viscx, Array2& viscy, Array2
 /* !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 /* !************************************************************** */
 
-    int i;
+     int i;
     int j;
 
 for(int i=1; i<imax-1; i++){
         for(j=1; j<jmax-1; j++){
-            dpdx = (u(i+1,j,0)-u(i-1,j,0))/(2*dx);
-            dpdy = (u(i,j+1,0)-u(i,j-1,0))/(2*dy);
+            dpdx = (uold(i+1,j,0)-uold(i-1,j,0))/(two*dx);
+            dpdy = (uold(i,j+1,0)-uold(i,j-1,0))/(two*dy);
 
-            dudx = (u(i+1,j,1)-u(i-1,j,1))/(2*dx);
-            dudy = (u(i,j+1,1)-u(i,j-1,1))/(2*dy);
+            dudx = (uold(i+1,j,1)-uold(i-1,j,1))/(two*dx);
+            dudy = (uold(i,j+1,1)-uold(i,j-1,1))/(two*dy);
 
-            dvdx = (u(i+1,j,2)-u(i-1,j,2))/(2*dx);
-            dvdy = (u(i,j+1,2)-u(i,j-1,2))/(2*dy);
+            dvdx = (uold(i+1,j,2)-uold(i-1,j,2))/(two*dx);
+            dvdy = (uold(i,j+1,2)-uold(i,j-1,2))/(two*dy);
 
-            d2udx2 = (u(i+1,j,1)-2*u(i,j,1)+u(i-1,j,1))/(dx*dx);
-            d2udy2 = (u(i,j+1,1)-2*u(i,j,1)+u(i,j-1,1))/(dy*dy);
+            d2udx2 = (uold(i+1,j,1)-2*uold(i,j,1)+uold(i-1,j,1))/pow2(dx);
+            d2udy2 = (uold(i,j+1,1)-2*uold(i,j,1)+uold(i,j-1,1))/pow2(dy);
 
-            d2vdx2 = (u(i+1,j,2)-2*u(i,j,2)+u(i-1,j,2))/(dx*dx);
-            d2vdy2 = (u(i,j+1,2)-2*u(i,j,2)+u(i,j-1,2))/(dy*dy);
+            d2vdx2 = (uold(i+1,j,2)-2*uold(i,j,2)+uold(i-1,j,2))/pow2(dx);
+            d2vdy2 = (uold(i,j+1,2)-2*uold(i,j,2)+uold(i,j-1,2))/pow2(dy);
 
-            uvel2 = (u(i,j,1)*u(i,j,1))+ (u(i,j,2)*u(i,j,2));
+            uvel2 = pow2(u(i,j,1)) + pow2(u(i,j,2));
 
-            beta2 = fmax(uvel2,rkappa*uinf);
+            beta2 = fmax(uvel2,rkappa*vel2ref);
 
-            u(i,j,0) = uold(i,j,0)- (beta2*dt(i,j)*((rho*dudx)+ (rho*dvdy)-viscx(i,j)-viscy(i,j)));
+            u(i,j,0) = uold(i,j,0)- (beta2*dt(i,j)*((rho*dudx)+ (rho*dvdy)-viscx(i,j)-viscy(i,j)-s(i,j,0)));
 
-            u(i,j,1) = uold(i,j,1) - ((dt(i,j)*rhoinv)*((rho*uold(i,j,1)*dudx) + (rho*uold(i,j,2)*dudy) +(dpdx)-(rmu *d2udx2)-(rmu*d2udy2)));
+            u(i,j,1) = uold(i,j,1) - ((dt(i,j)*rhoinv)*((rho*uold(i,j,1)*dudx) + (rho*uold(i,j,2)*dudy) +(dpdx)-(rmu *d2udx2)-(rmu*d2udy2)-s(i,j,1)));
 
-            u(i,j,2) = uold(i,j,2) - ((dt(i,j)*rhoinv)*((rho*uold(i,j,2)*dvdx) + (rho*uold(i,j,1)*dvdy) +(dpdy)-(rmu *d2vdx2)-(rmu*d2vdy2)));
+            u(i,j,2) = uold(i,j,2) - ((dt(i,j)*rhoinv)*((rho*uold(i,j,1)*dvdx) + (rho*uold(i,j,2)*dvdy) +(dpdy)-(rmu *d2vdx2)-(rmu*d2vdy2)-s(i,j,2)));
+
+            /*cout<< "p="<< u(i,j,0)<<endl;
+            cout<< "u="<< u(i,j,1)<<endl;
+            cout<< "v="<< u(i,j,2)<<endl;*/
 
         }
 }
+
 
 }
 
@@ -1252,91 +1266,49 @@ void check_iterative_convergence(int n, Array3& u, Array3& uold, Array2& dt, dou
     res[1] = zero;
     res[2] = zero;
 
-    resinit[0] = zero;              //Reset to zero (as they are sums)
-    resinit[1] = zero;
-    resinit[2] = zero;
+  double sumsqres =0.0;
+  double sumres0 =0.0; /*Stores sum of all res[0]*/
+  double sumres1 =0.0; /*Stores sum of all res[1]*/
+  double sumres2 =0.0; /*Stores sum of all res[2]*/
+  
+  double maxresinit=0; /* Determines max sumres and squares it*/
+  double L2Norminit =0; /*To Calculate initial L2norm*/
 
 /* !************************************************************** */
 /* !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 /* !************************************************************** */
-   cout<<"I am in checking iterative convergence"<<endl;
+   for(i=1; i<imax-1; i++){
+        for(j=1; j<jmax-1; j++){
+            for (k=0; k<neq; k++){
+                res[k] = (fabs(u(i,j,k)-uold(i,j,k)));
 
-  conv = 0; //initial set of conv value
-  for (j=1;j<jmax;j++){
-    for(i=1;i<imax;i++){
+                if(k==0){
+                    sumres0 += res[k];
+                }else if (k==1){
+                    sumres1 += res[k];
+                }else if (k==2){
+                    sumres2 += res[k];
+                }
+                
+               /*cout<<"res:"<<k<<" = "<<res[k]<<endl;
+                cout<<"sumqres"<<sumsqres<<endl;*/
+                }
+            }
 
-   //cout<<"residinit: "<<resinit[0]<<","<<resinit[1]<<","<<resinit[2]<<endl;
-  //****Pressure & Velocity Derivatives Definitions HERE*****************//
-  //derivatives at next iteration step
-   double dpdx = (u(i+1,j,0)-u(i-1,j,0))/(2*dx); //pressure derivatives
-   double dpdy = (u(i,j+1,0)-u(i,j-1,0))/(2*dy);
+        }
+        
+	sumsqres = pow2(fmax(sumres0, fmax(sumres1, sumres2)));
+	maxresinit= pow2(fmax(resinit[0], fmax(resinit[1], resinit[2])));
 
-   double dudx = (u(i+1,j,1)-u(i-1,j,1))/(2*dx); //u velocity derivatives
-   double dudy = (u(i,j+1,1)-u(i,j-1,1))/(2*dy);
+        /*cout<<"maxresinit:"<<maxresinit<<endl;*/
+        L2Norminit = std::sqrt(maxresinit/(imax*jmax));
+        /*cout<<"convsinit:"<<convinit<<endl;*/
+        conv = (std::sqrt(sumsqres/(imax*jmax)))/L2Norminit; /*L2 Norms ratio*/
+        /*cout<<"conv"<<conv<<endl;*/
 
-   double d2udx2 = (u(i+1,j,1)-2*u(i,j,1)+u(i-1,j,1))/(dx*dx);
-   double d2udy2 = (u(i,j+1,1)-2*u(i,j,1)+u(i,j-1,1))/(dy*dy);
 
-   double dvdx = (u(i+1,j,2)-u(i-1,j,2))/(2*dx); //v velocity derivatives
-   double dvdy = (u(i,j+1,2)-u(i,j-1,2))/(2*dy);
-
-   double d2vdx2 = (u(i+1,j,2)-2*u(i,j,2)+u(i-1,j,2))/(dx*dx);
-   double d2vdy2 = (u(i,j+1,2)-2*u(i,j,2)+u(i,j-1,2))/(dy*dy);
-
-   //derivaties at initial iteration
-   double dpdx_old = (uold(i+1,j,0)-uold(i-1,j,0))/(2*dx); //pressure derivatives
-   double dpdy_old = (uold(i,j+1,0)-uold(i,j-1,0))/(2*dy);
-
-   double dudx_old  = (uold(i+1,j,1)-uold(i-1,j,1))/(2*dx); //u velocity derivatives
-   double dudy_old  = (uold(i,j+1,1)-uold(i,j-1,1))/(2*dy);
-
-   double d2udx2_old  = (uold(i+1,j,1)-2*uold(i,j,1)+uold(i-1,j,1))/(dx*dx);
-   double d2udy2_old  = (uold(i,j+1,1)-2*uold(i,j,1)+uold(i,j-1,1))/(dy*dy);
-
-   double dvdx_old  = (uold(i+1,j,2)-uold(i-1,j,2))/(2*dx); //v velocity derivatives
-   double dvdy_old  = (uold(i,j+1,2)-uold(i,j-1,2))/(2*dy);
-
-   double d2vdx2_old  = (uold(i+1,j,2)-2*uold(i,j,2)+uold(i-1,j,2))/(dx*dx);
-   double d2vdy2_old  = (uold(i,j+1,2)-2*uold(i,j,2)+uold(i,j-1,2))/(dy*dy);
-
-  //****Artificial Viscosity HERE*************************//
-  Array2 viscx(imax,jmax);Array2 viscy(imax,jmax); 
-  Compute_Artificial_Viscosity(u,viscx,viscy); //artificial viscosity at new iteration step
-  Array2 viscx_old(imax,jmax);Array2 viscy_old(imax,jmax); 
-  Compute_Artificial_Viscosity(u,viscx_old,viscy_old); //artificial viscosity at curent iteration step
-
-  //*****Steady-State Iterative Residuals HERE**************//
-
-  //iterative residuals in L2 Norm at next iterative step
-  res[0] = sqrt(pow2(rho*dudx - viscx(i,j)) + pow2(rho*dvdy - viscy(i,j))); //steady-state iterative residual for continuity equation
-  res[1] = sqrt(pow2(rho*u(i,j,1)*dudx + dpdx - rmu*d2udx2) + pow2(rho*u(i,j,2)*dudy - rmu*d2udy2)); //steady-state iterative residual for x-momentum equation
-  res[2] = sqrt(pow2(rho*u(i,j,1)*dvdx - rmu*d2vdx2) + pow2(rho*u(i,j,2)*dvdy + dpdy - rmu*d2vdy2)); //steady-state iterative residual for x-momentum equation
-
-  //iterative residuals at current iterative step
-  resinit[0] = sqrt(pow2(rho*dudx_old - viscx_old(i,j)) + pow2(rho*dvdy_old - viscy_old(i,j))); //steady-state iterative residual for continuity equation
-  resinit[1] = sqrt(pow2(rho*u(i,j,1)*dudx_old + dpdx_old - rmu*d2udx2_old) + pow2(rho*u(i,j,2)*dudy_old - rmu*d2udy2_old)); //steady-state iterative residual for x-momentum equation
-  resinit[2] = sqrt(pow2(rho*uold(i,j,1)*dvdx_old - rmu*d2vdx2_old) + pow2(rho*uold(i,j,2)*dvdy_old + dpdy_old - rmu*d2vdy2_old)); //steady-state iterative residual for x-momentum equation
-    
-// cout<<"resid: "<<res[0]<<","<<res[1]<<","<<res[2]<<endl;
-    
-  //cout<<"iterative residuals (new iteration step): "<<endl<<"continuity: "<<res[0]<<endl; 
-  //cout<<"iterative residuals (initial iteration step): "<<endl<<"continuity: "<<resinit[0]<<endl; 
-  //*******Convergence Calculation HERE********************//
-
-  //calculate convergence value = L2 Norm at next iterative step / L2 Norm at initial iterative step
-  double conv_continuity = res[0] / resinit[0]; //convergence value
-  double conv_xmomentum = res[1] / resinit[1];
-  double conv_ymomentum = res[2] / resinit[2];
-
-  //setting convergence of node value to max convergence value of eqs.
-  double conv_node = fmax(conv_continuity,conv_xmomentum); conv_node = fmax(conv_node,conv_ymomentum);
   
-  //setting the max convergence value of all the nodes to convergence value (conv)!!!
-  conv = fmax(conv,conv_node);
-  cout<<"Convergence Criteria: "<<conv<<endl;
-    }
-  }
-  cout<<"End of Iteration\n";
+  
     /* Write iterative residuals every "residualOut" iterations */
     if( ((n%residualOut)==0)||(n==ninit) )
     {
