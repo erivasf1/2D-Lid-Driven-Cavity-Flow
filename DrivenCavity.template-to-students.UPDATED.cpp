@@ -40,9 +40,9 @@ using namespace std;
   
 /*--------- User sets inputs here  --------*/
 
-  const int nmax = 500;             /* Maximum number of iterations */
-  const int iterout = 5000;             /* Number of time steps between solution output */
-  const int imms = 1;                   /* Manufactured solution flag: = 1 for manuf. sol., = 0 otherwise */
+  const int nmax = 100000;             /* Maximum number of iterations */
+  const int iterout = 500;             /* Number of time steps between solution output */
+  const int imms = 0;                   /* Manufactured solution flag: = 1 for manuf. sol., = 0 otherwise */
   const int isgs = 1;                   /* Symmetric Gauss-Seidel  flag: = 1 for SGS, = 0 for point Jacobi */
   const int irstr = 0;                  /* Restart flag: = 1 for restart (file 'restart.in', = 0 for initial run */
   const int ipgorder = 0;               /* Order of pressure gradient: 0 = 2nd, 1 = 3rd (not needed) */
@@ -873,6 +873,7 @@ double srcmms_ymtm(double x, double y)
 void compute_time_step( Array3& u, Array2& dt, double& dtmin )
 {
     /* 
+ * cout <<
     Uses global variable(s): one (not used), two, four, half, fourth
     Uses global variable(s): vel2ref, rmu, rho, dx, dy, cfl, rkappa, imax, jmax
     Uses: u
@@ -901,7 +902,6 @@ for(i=1; i<imax-1; i++)
 	uvel2 = u(i,j,1)* u(i,j,1) + u(i,j,2)* u(i,j,2);
 
 	beta2 = fmax(uvel2,rkappa*uinf);
-
 	lambda_x = 0.5 * (fabs(u(i,j,1)) +  sqrt(uvel2 + 4*beta2));
 
 	lambda_y = 0.5 * (fabs(u(i,j,2)) +  sqrt(uvel2 + 4*beta2));
@@ -945,39 +945,91 @@ void Compute_Artificial_Viscosity( Array3& u, Array2& viscx, Array2& viscy )
 /* !************************************************************** */
 /* !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 /* !************************************************************** */
-for(j=1; j<jmax-1; j++)
+for(j=2; j<jmax-2; j++) //for nodes interior of the nodes closest to the wall! 
 {
-	for(i=1; i<imax-1; i++)
+	for(i=2; i<imax-2; i++)
 	{
-	    uvel2 = pow2(u(i,j,1)) + pow2(u(i,j,2));
 
-        beta2 = fmax(uvel2,rkappa*uinf);
-//        cout<<"i index: "<<i<<"\t"<<"j index: "<<j<<endl;
-//       cout<<"imax: "<<imax<<"\t"<<"jmax: "<<jmax<<endl;
+	   uvel2 = pow2(u(i,j,1)) + pow2(u(i,j,2));
 
-        lambda_x = 0.5 * (fabs(u(i,j,1)) +  sqrt(uvel2 + 4*beta2));
-//        cout<<"lamba x: "<<lambda_x<<endl;
-        lambda_y = 0.5 * (fabs(u(i,j,2)) +  sqrt(uvel2 + 4*beta2));
-//        cout<<"lamba y: "<<lambda_y<<endl;
+           beta2 = fmax(uvel2,rkappa*uinf);
+//          cout<<"i index: "<<i<<"\t"<<"j index: "<<j<<endl;
+//          cout<<"imax: "<<imax<<"\t"<<"jmax: "<<jmax<<endl;
 
-        d4pdx4 = (u(i+2,j,0) - 4*u(i+1,j,0) + 6*u(i,j,0) - 4*u(i-1,j,0) + u(i-2,j,0))/ double(dx);
+           lambda_x = 0.5 * (fabs(u(i,j,1)) +  sqrt(uvel2 + 4*beta2));
+//          cout<<"lamba x: "<<lambda_x<<endl;
+           lambda_y = 0.5 * (fabs(u(i,j,2)) +  sqrt(uvel2 + 4*beta2));
+//          cout<<"lamba y: "<<lambda_y<<endl;
 
-//        cout<< "d4pdx4="<< d4pdx4<<endl;
+           d4pdx4 = (u(i+2,j,0) - 4*u(i+1,j,0) + 6*u(i,j,0) - 4*u(i-1,j,0) + u(i-2,j,0))/ double(dx);
 
-        d4pdy4 = (u(i,j+2,0) - 4*u(i,j+1,0) + 6*u(i,j,0) - 4*u(i,j-1,0) + u(i,j-2,0))/ double(dy);
+//         cout<< "d4pdx4="<< d4pdx4<<endl;
 
-//        cout<< "d4pdy4="<< d4pdy4<<endl;
+           d4pdy4 = (u(i,j+2,0) - 4*u(i,j+1,0) + 6*u(i,j,0) - 4*u(i,j-1,0) + u(i,j-2,0))/ double(dy);
 
-        viscx(i,j) = (-fabs(lambda_x)* Cx *double(dx*dx*dx)*d4pdx4)/beta2;
+//         cout<< "d4pdy4="<< d4pdy4<<endl;
+
+           viscx(i,j) = (-fabs(lambda_x)* Cx *double(dx*dx*dx)*d4pdx4)/beta2;
 
 
-        viscy(i,j) = (-fabs(lambda_y)* Cy *double(dy*dy*dy)*d4pdy4)/beta2;
+           viscy(i,j) = (-fabs(lambda_y)* Cy *double(dy*dy*dy)*d4pdy4)/beta2;
 
 //        cout<< "viscx="<< viscx(i,j)<<endl;
 //        cout<< "viscy="<< viscy(i,j)<<endl;
         }
 }
+//*********LINEAR EXTRAPOLATIONS*************//
 
+int sides[2] = {1,imax-2};
+int top_bottom[2] = {1,jmax-2};
+
+for(auto i:sides){ // for nodes closest to side boundaries
+  for(j=1;j<jmax-1;j++){
+
+    if(i==1){
+      // for x-component of articial viscosity
+      double slope_x = (viscx(i+2,j)-viscx(i+1,j)) / dx;
+      viscx(i,j) = viscx(i+1,j) + (slope_x*dx);
+    
+      //for y-component of artifcial viscosity
+      double slope_y = (viscx(i+2,j)-viscx(i+1,j)) / dx;
+      viscx(i,j) = viscx(i+1,j) + (slope_y*dx);
+    }
+    if(i==imax-1){
+      // for x-component of articial viscosity
+      double slope_x = (viscx(i-2,j)-viscx(i-1,j)) / dx;
+      viscx(i,j) = viscx(i-1,j) + (slope_x*dx);
+    
+      //for y-component of artifcial viscosity
+      double slope_y = (viscx(i-2,j)-viscx(i-1,j)) / dx;
+      viscx(i,j) = viscx(i-1,j) + (slope_y*dx);
+     }
+  }
+}
+for(auto j:top_bottom){ // for nodes closest to top & bottom boundaries
+  for(i=1;i<imax-1;i++){
+
+    if(j==1){
+      // for x-component of articial viscosity
+      double slope_x = (viscx(i,j+2)-viscx(i,j+1)) / dy;
+      viscx(i,j) = viscx(i,j+1) + (slope_x*dy);
+    
+      //for y-component of artifcial viscosity
+      double slope_y = (viscy(i,j+2)-viscy(i,j+1)) / dy;
+      viscx(i,j) = viscy(i,j+1) + (slope_y*dy);
+    }
+    if(j==jmax-1){
+      // for x-component of articial viscosity
+      double slope_x = (viscx(i,j-2)-viscx(i,j-1)) / dy;
+      viscx(i,j) = viscx(i-1,j) + (slope_x*dy);
+    
+      //for y-component of artifcial viscosity
+      double slope_y = (viscy(i,j-2)-viscy(i,j-1)) / dy;
+      viscx(i,j) = viscy(i,j-1) + (slope_y*dy);
+     }
+  
+  }
+}
 
 }
 
@@ -1016,37 +1068,37 @@ void SGS_forward_sweep( Array3& u, Array2& viscx, Array2& viscy, Array2& dt, Arr
   for (auto j=1;j<jmax-1;j++){ //inner nodes only - STARTING FROM node i=1,j=1
     for (auto i=1;i<imax-1;i++){
      //local constants
-     uvel2 = pow(u(i,j,1),2) + pow(u(i,j,2),2); //local velocity mag.
+     uvel2 = pow2(u(i,j,1)) + pow2(u(i,j,2)); //local velocity mag.
      beta2 = fmax(uvel2,rkappa*uinf); //time preconditioning constant
 
-     dpdx = (u(i+1,j,0)-u(i-1,j,0))/(2*dx); //pressure derivatives
-     dpdy = (u(i,j+1,0)-u(i,j-1,0))/(2*dy);
+     dpdx = (u(i+1,j,0)-u(i-1,j,0))/(two*dx); //pressure derivatives
+     dpdy = (u(i,j+1,0)-u(i,j-1,0))/(two*dy);
 
-     dudx = (u(i+1,j,1)-u(i-1,j,1))/(2*dx); //u velocity derivatives
-     dudy = (u(i,j+1,1)-u(i,j-1,1))/(2*dy);
+     dudx = (u(i+1,j,1)-u(i-1,j,1))/(two*dx); //u velocity derivatives
+     dudy = (u(i,j+1,1)-u(i,j-1,1))/(two*dy);
 
      d2udx2 = (u(i+1,j,1)-2*u(i,j,1)+u(i-1,j,1))/(dx*dx);
      d2udy2 = (u(i,j+1,1)-2*u(i,j,1)+u(i,j-1,1))/(dy*dy);
 
-     dvdx = (u(i+1,j,2)-u(i-1,j,2))/(2*dx); //v velocity derivatives
-     dvdy = (u(i,j+1,2)-u(i,j-1,2))/(2*dy);
+     dvdx = (u(i+1,j,2)-u(i-1,j,2))/(two*dx); //v velocity derivatives
+     dvdy = (u(i,j+1,2)-u(i,j-1,2))/(two*dy);
 
      d2vdx2 = (u(i+1,j,2)-2*u(i,j,2)+u(i-1,j,2))/(dx*dx);
      d2vdy2 = (u(i,j+1,2)-2*u(i,j,2)+u(i,j-1,2))/(dy*dy);
      // ----continuity equation----------
-     double continuity_it_resid = (rho*dudx) + (rho*dvdy) - viscx(i,j) - viscy(i,j); //steady-state iterative residual for continuity equation
+     double continuity_it_resid = (rho*dudx) + (rho*dvdy) - viscx(i,j) - viscy(i,j) - s(i,j,0); //steady-state iterative residual for continuity equation
 
      u(i,j,0) = u(i,j,0) - beta2*dt(i,j)*continuity_it_resid; //updates pressure value of node i,j
 
      // ----x-momentum equation----------
-     double xmomentum_it_resid = (rho*u(i,j,1)*dudx) + (rho*u(i,j,2)*dudy) + dpdx - (rmu*d2udx2) - (rmu*d2udy2); //steady-state iterative residual for x-momentum equation
+     double xmomentum_it_resid = (rho*u(i,j,1)*dudx) + (rho*u(i,j,2)*dudy) + dpdx - (rmu*d2udx2) - (rmu*d2udy2) - s(i,j,1); //steady-state iterative residual for x-momentum equation
 
-     u(i,j,1) = u(i,j,1) - (dt(i,j)/rho)*xmomentum_it_resid; //updates u-velocity value of node i,j
+     u(i,j,1) = u(i,j,1) - dt(i,j)*rhoinv*xmomentum_it_resid; //updates u-velocity value of node i,j
      
      // ----y-momentum equation---------- 
-     double ymomentum_it_resid = (rho*u(i,j,2)*dvdx) + (rho*u(i,j,1)*dvdy) + dpdx - (rmu*d2vdx2) - (rmu*d2vdy2); //steady-state iterative residval for y-momentum equation
+     double ymomentum_it_resid = (rho*u(i,j,1)*dvdx) + (rho*u(i,j,2)*dvdy) + dpdy - (rmu*d2vdx2) - (rmu*d2vdy2) - s(i,j,2); //steady-state iterative residval for y-momentum equation
 
-     u(i,j,2) = u(i,j,2) - (dt(i,j)/rho)*ymomentum_it_resid; //updates v-velocity value of node i,j
+     u(i,j,2) = u(i,j,2) - dt(i,j)*rhoinv*ymomentum_it_resid; //updates v-velocity value of node i,j
     }
   }
 
@@ -1088,41 +1140,41 @@ void SGS_backward_sweep( Array3& u, Array2& viscx, Array2& viscy, Array2& dt, Ar
 /* !************************************************************** */
 
 /****ONLY FOR 1 ITERATION STEP*******/
-  for (auto j=jmax-1;j>0;j--){ //inner nodes only - STARTING FROM node i=imax-1,j=jmax-1
-    for (auto i=imax-1;i>0;i--){
+  for (auto j=jmax-2;j>0;j--){ //inner nodes only - STARTING FROM node i=imax-2,j=jmax-2
+    for (auto i=imax-2;i>0;i--){
      //local constants
-     uvel2 = (u(i,j,1) * u(i,j,1)) + (u(i,j,2) * u(i,j,2)); //local velocity mag.
+     uvel2 = pow2(u(i,j,1)) + pow2(u(i,j,2)); //local velocity mag.
      beta2 = fmax(uvel2,rkappa*uinf); //time preconditioning constant
 
-     dpdx = (u(i+1,j,0)-u(i-1,j,0))/(2*dx); //pressure derivatives
-     dpdy = (u(i,j+1,0)-u(i,j-1,0))/(2*dy);
+     dpdx = (u(i+1,j,0)-u(i-1,j,0))/(two*dx); //pressure derivatives
+     dpdy = (u(i,j+1,0)-u(i,j-1,0))/(two*dy);
 
-     dudx = (u(i+1,j,1)-u(i-1,j,1))/(2*dx); //u velocity derivatives
-     dudy = (u(i,j+1,1)-u(i,j-1,1))/(2*dy);
+     dudx = (u(i+1,j,1)-u(i-1,j,1))/(two*dx); //u velocity derivatives
+     dudy = (u(i,j+1,1)-u(i,j-1,1))/(two*dy);
 
      d2udx2 = (u(i+1,j,1)-2*u(i,j,1)+u(i-1,j,1))/(dx*dx);
      d2udy2 = (u(i,j+1,1)-2*u(i,j,1)+u(i,j-1,1))/(dy*dy);
 
-     dvdx = (u(i+1,j,2)-u(i-1,j,2))/(2*dx); //v velocity derivatives
-     dvdy = (u(i,j+1,2)-u(i,j-1,2))/(2*dy);
+     dvdx = (u(i+1,j,2)-u(i-1,j,2))/(two*dx); //v velocity derivatives
+     dvdy = (u(i,j+1,2)-u(i,j-1,2))/(two*dy);
 
      d2vdx2 = (u(i+1,j,2)-2*u(i,j,2)+u(i-1,j,2))/(dx*dx);
      d2vdy2 = (u(i,j+1,2)-2*u(i,j,2)+u(i,j-1,2))/(dy*dy);
  
      // ----continuity equation----------
-     double continuity_it_resid = (rho*dudx) + (rho*dvdy) - viscx(i,j) - viscy(i,j); //steady-state iterative residual for continuity equation
+     double continuity_it_resid = (rho*dudx) + (rho*dvdy) - viscx(i,j) - viscy(i,j) - s(i,j,0); //steady-state iterative residual for continuity equation
 
      u(i,j,0) = u(i,j,0) - beta2*dt(i,j)*continuity_it_resid; //updates pressure value of node i,j
 
      // ----x-momentum equation----------
-     double xmomentum_it_resid = (rho*u(i,j,1)*dudx) + (rho*u(i,j,2)*dudy) + dpdx - (rmu*d2udx2) - (rmu*d2udy2); //steady-state iterative residual for x-momentum equation
+     double xmomentum_it_resid = (rho*u(i,j,1)*dudx) + (rho*u(i,j,2)*dudy) + dpdx - (rmu*d2udx2) - (rmu*d2udy2) - s(i,j,1); //steady-state iterative residual for x-momentum equation
 
-     u(i,j,1) = u(i,j,1) - (dt(i,j)/rho)*xmomentum_it_resid; //updates v-velocity value of node i,j
+     u(i,j,1) = u(i,j,1) - dt(i,j)*rhoinv*xmomentum_it_resid; //updates v-velocity value of node i,j
      
      // ----y-momentum equation---------- 
-     double ymomentum_it_resid = (rho*u(i,j,2)*dvdx) + (rho*u(i,j,1)*dvdy) + dpdx - (rmu*d2vdx2) - (rmu*d2vdy2); //steady-state iterative residval for y-momentum equation
+     double ymomentum_it_resid = (rho*u(i,j,1)*dvdx) + (rho*u(i,j,2)*dvdy) + dpdy - (rmu*d2vdx2) - (rmu*d2vdy2) - s(i,j,2); //steady-state iterative residval for y-momentum equation
 
-     u(i,j,2) = u(i,j,2) - (dt(i,j)/rho)*ymomentum_it_resid; //updates v-velocity value of node i,j
+     u(i,j,2) = u(i,j,2) - dt(i,j)*rhoinv*ymomentum_it_resid; //updates v-velocity value of node i,j
     }
   }
 
@@ -1159,13 +1211,12 @@ void point_Jacobi( Array3& u, Array3& uold, Array2& viscx, Array2& viscy, Array2
 
     /* Point Jacobi method */
 
-  cout<<"I am here in Point-Jacobi NOW!"<<endl;
 
 /* !************************************************************** */
 /* !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 /* !************************************************************** */
 
-     int i;
+    int i;
     int j;
 
 for(int i=1; i<imax-1; i++){
@@ -1266,12 +1317,18 @@ void check_iterative_convergence(int n, Array3& u, Array3& uold, Array2& dt, dou
     res[1] = zero;
     res[2] = zero;
 
-  double sumsqres =0.0;
+  double beta2;
+  double uvel2;
+
   double sumres0 =0.0; /*Stores sum of all res[0]*/
   double sumres1 =0.0; /*Stores sum of all res[1]*/
   double sumres2 =0.0; /*Stores sum of all res[2]*/
   
-  double maxresinit=0; /* Determines max sumres and squares it*/
+  double norm_continuity;
+  double norm_xmomentum;
+  double norm_ymomentum;
+
+  double sumsqresinit=0; /* Determines max sumres and squares it*/
   double L2Norminit =0; /*To Calculate initial L2norm*/
 
 /* !************************************************************** */
@@ -1280,32 +1337,54 @@ void check_iterative_convergence(int n, Array3& u, Array3& uold, Array2& dt, dou
    for(i=1; i<imax-1; i++){
         for(j=1; j<jmax-1; j++){
             for (k=0; k<neq; k++){
-                res[k] = (fabs(u(i,j,k)-uold(i,j,k)));
+               
+                /*cout<<"Pressure: "<<"new:"<<u(i,j,0)<<"\t"<<"old:"<<uold(i,j,0)<<endl;
+                cout<<"U-Velocity: "<<"new:"<<u(i,j,1)<<"\t"<<"old:"<<uold(i,j,1)<<endl;
+                cout<<"V-Velocity: "<<"new:"<<u(i,j,2)<<"\t"<<"old:"<<uold(i,j,2)<<endl;*/
+                
+                if(k==0){ //continuity equation
 
-                if(k==0){
-                    sumres0 += res[k];
-                }else if (k==1){
-                    sumres1 += res[k];
-                }else if (k==2){
-                    sumres2 += res[k];
+                    //time preconditioning term
+	            uvel2 = u(i,j,1)* u(i,j,1) + u(i,j,2)* u(i,j,2);
+
+     	            beta2 = fmax(uvel2,rkappa*uinf);
+
+                    res[k] = (u(i,j,0)-uold(i,j,0)) / (-beta2*dt(i,j)); 
+                    //cout << "Beta2 value(for continuity): "<<beta2<<endl; 
+                    //cout << "time step(for continuity): "<<dt(i,j)<<endl; 
+            //        cout<<"local continuity residual: "<<res[k]<<endl;
+                    sumres0 += pow2(fabs(res[k]));
+
+                }else if (k==1){ //x-momentum equation
+                    res[k] = -rho*(u(i,j,1)-uold(i,j,1)) / dt(i,j); 
+          //          cout<<"local x-momentum residual: "<<res[k]<<endl;
+                    sumres1 += pow2(fabs(res[k]));
+
+                }else if (k==2){ //y-momentum equation
+                    res[k] = -rho*(u(i,j,2)-uold(i,j,2)) / dt(i,j); 
+        //            cout<<"local y-momentum residual: "<<res[k]<<endl;
+                    sumres2 += pow2(fabs(res[k]));
                 }
                 
-               /*cout<<"res:"<<k<<" = "<<res[k]<<endl;
-                cout<<"sumqres"<<sumsqres<<endl;*/
                 }
             }
 
         }
-        
-	sumsqres = pow2(fmax(sumres0, fmax(sumres1, sumres2)));
-	maxresinit= pow2(fmax(resinit[0], fmax(resinit[1], resinit[2])));
 
-        /*cout<<"maxresinit:"<<maxresinit<<endl;*/
-        L2Norminit = std::sqrt(maxresinit/(imax*jmax));
-        /*cout<<"convsinit:"<<convinit<<endl;*/
-        conv = (std::sqrt(sumsqres/(imax*jmax)))/L2Norminit; /*L2 Norms ratio*/
-        /*cout<<"conv"<<conv<<endl;*/
+        //Norms of each equation
+	norm_continuity = sqrt(sumres0/(imax*jmax));
+        norm_xmomentum = sqrt(sumres1/(imax*jmax));
+        norm_ymomentum = sqrt(sumres2/(imax*jmax));
 
+        cout<<"Continuity iterative residual L2 norm: "<<norm_continuity<<endl;
+        cout<<"X-Momentum iterative residual L2 norm: "<<norm_xmomentum<<endl;
+        cout<<"Y-Momentum iterative residual L2 norm: "<<norm_ymomentum<<endl;
+
+        L2Norminit = sqrt(pow2(resinit[0])/(imax*jmax));
+
+        cout<<"L2Norminit: "<<L2Norminit<<endl;
+        conv = fmax(norm_continuity,fmax(norm_xmomentum,norm_ymomentum)) / L2Norminit; /*L2 Norms ratio*/
+        cout<<"conv: "<<conv<<endl;
 
   
   
@@ -1481,15 +1560,12 @@ int main()
 
         /* Pressure Rescaling (based on center point) */
         pressure_rescaling( u );
-        cout<<"pressure rescaling Worked"<<endl;
 
         /* Update the time */
         rtime += dtmin;
-        cout<<"updating time Worked"<<endl;
 
         /* Check iterative convergence using L2 norms of iterative residuals */
         check_iterative_convergence(n, u, uold, dt, res, resinit, ninit, rtime, dtmin, conv);
-        cout<<"checking iterative convergence Worked"<<endl;
 
         if(conv<toler) 
         {
