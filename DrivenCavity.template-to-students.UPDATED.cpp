@@ -1421,6 +1421,14 @@ void Discretization_Error_Norms( Array3& u )
     double rL1norm[neq];
     double rL2norm[neq]; 
     double rLinfnorm[neq];
+    
+    double rL1[neq];
+    double rL2[neq];
+    double rLinf[neq];
+
+    int i;
+    int j;
+    int k;
 
     /* Only compute discretization error norms for manufactured solution */
     if(imms==1)
@@ -1429,8 +1437,41 @@ void Discretization_Error_Norms( Array3& u )
 /* !************************************************************** */
 /* !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 /* !************************************************************** */
+/* Initialize error norms*/
+
+        for (int k = 0; k < neq; k++) {
+            rL1norm[k] = 0.0;
+            rL2norm[k] = 0.0;
+            rLinfnorm[k] = 0.0;
+        }
+
+      for(int i=1; i<imax-1; i++)
+    {
+        for(int j=1; j<jmax-1; j++)
+        {
+            x = (xmax - xmin)*(double)(i)/(double)(imax - 1);
+            y = (ymax - ymin)*(double)(j)/(double)(jmax - 1);
+
+            /*Calculating Discretization Error*/
+            for(int k = 0; k<neq; k++)
+            DE = fabs(u(i,j,k)- umms(x,y,k));
+
+            /*Calculating Error Norms*/
+
+            rL1[k] += DE;
+            rL2[k] += DE*DE;
+            rLinf[k] = fmax(rLinf[k], DE);
+
+        }
+    }
+ /*Calculating norm*/
+ for (int k=0; k < neq; k++){
+      rL1norm[k]= rL1[k]/(imax * jmax);
+      rL2norm[k]= sqrt(rL2[k]/(imax*jmax));
+      rLinfnorm[k] = rLinf[k];
 
 
+ }
 
 
     }
