@@ -40,21 +40,21 @@ using namespace std;
   
 /*--------- User sets inputs here  --------*/
 
-  const int nmax = 100000;             /* Maximum number of iterations */
+  const int nmax = 1000000;             /* Maximum number of iterations */
   const int iterout = 500;             /* Number of time steps between solution output */
-  const int imms = 0;                   /* Manufactured solution flag: = 1 for manuf. sol., = 0 otherwise */
+  const int imms = 1;                   /* Manufactured solution flag: = 1 for manuf. sol., = 0 otherwise */
   const int isgs = 1;                   /* Symmetric Gauss-Seidel  flag: = 1 for SGS, = 0 for point Jacobi */
   const int irstr = 0;                  /* Restart flag: = 1 for restart (file 'restart.in', = 0 for initial run */
   const int ipgorder = 0;               /* Order of pressure gradient: 0 = 2nd, 1 = 3rd (not needed) */
   const int lim = 0;                    /* variable to be used as the limiter sensor (= 0 for pressure) */
   const int residualOut = 10;           /* Number of timesteps between residual output */
 
-  const double cfl  = 0.9;              /* CFL number used to determine time step */
-  const double Cx = 0.01;               /* Parameter for 4th order artificial viscosity in x */
-  const double Cy = 0.01;               /* Parameter for 4th order artificial viscosity in y */
+  const double cfl  = 0.2;              /* CFL number used to determine time step */
+  const double Cx = 0.0625;               /* Parameter for 4th order artificial viscosity in x */
+  const double Cy = 0.0625;               /* Parameter for 4th order artificial viscosity in y */
   const double toler = 1.e-10;          /* Tolerance for iterative residual convergence */
   const double rkappa = 0.1;            /* Time derivative preconditioning constant */
-  const double Re = 100.0;              /* Reynolds number = rho*Uinf*L/rmu */
+  const double Re = 10.0;              /* Reynolds number = rho*Uinf*L/rmu */
   const double pinf = 0.801333844662;   /* Initial pressure (N/m^2) -> from MMS value at cavity center */
   const double uinf = 1.0;              /* Lid velocity (m/s) */
   const double rho = 1.0;               /* Density (kg/m^3) */
@@ -314,7 +314,7 @@ void set_derived_inputs()
 {
     rhoinv = one/rho;                            /* Inverse density, 1/rho (m^3/kg) */
     rlength = xmax - xmin;                       /* Characteristic length (m) [cavity width] */
-    rmu = rho*uinf*rlength/Re;                   /* Viscosity (N*s/m^2) */
+    rmu = (rho*uinf*rlength)/Re;                   /* Viscosity (N*s/m^2) */
     vel2ref = uinf*uinf;                         /* Reference velocity squared (m^2/s^2) */
     dx = (xmax - xmin)/(double)(imax - 1);          /* Delta x (m) */
     dy = (ymax - ymin)/(double)(jmax - 1);          /* Delta y (m) */
@@ -902,16 +902,16 @@ for(i=1; i<imax-1; i++)
 	uvel2 = u(i,j,1)* u(i,j,1) + u(i,j,2)* u(i,j,2);
 
 	beta2 = fmax(uvel2,rkappa*uinf);
-	lambda_x = 0.5 * (fabs(u(i,j,1)) +  sqrt(uvel2 + 4*beta2));
+	lambda_x = 0.5 * (fabs(u(i,j,1)) +  sqrt(pow2(u(i,j,1)) + four*beta2));
 
-	lambda_y = 0.5 * (fabs(u(i,j,2)) +  sqrt(uvel2 + 4*beta2));
+	lambda_y = 0.5 * (fabs(u(i,j,2)) +  sqrt(pow2(u(i,j,2)) + four*beta2));
 
 	lambda_max = (lambda_x > lambda_y)? lambda_x:lambda_y;
 	
 	/*cout << "lambda_x = " << lambda_max << endl;*/
 	dtconv = fmin(dx, dy)/lambda_max ;
 	
-	dtvisc = dx*dy/(4*rmu*rhoinv);
+	dtvisc = (dx*dy) / (four*rmu*rhoinv);
 	
 	dtmin = cfl*fmin(dtconv, dtvisc);
 	
@@ -956,16 +956,16 @@ for(j=2; j<jmax-2; j++) //for nodes interior of the nodes closest to the wall!
 //          cout<<"i index: "<<i<<"\t"<<"j index: "<<j<<endl;
 //          cout<<"imax: "<<imax<<"\t"<<"jmax: "<<jmax<<endl;
 
-           lambda_x = 0.5 * (fabs(u(i,j,1)) +  sqrt(uvel2 + 4*beta2));
+           lambda_x = 0.5 * (fabs(u(i,j,1)) +  sqrt(uvel2 + four*beta2));
 //          cout<<"lamba x: "<<lambda_x<<endl;
-           lambda_y = 0.5 * (fabs(u(i,j,2)) +  sqrt(uvel2 + 4*beta2));
+           lambda_y = 0.5 * (fabs(u(i,j,2)) +  sqrt(uvel2 + four*beta2));
 //          cout<<"lamba y: "<<lambda_y<<endl;
 
-           d4pdx4 = (u(i+2,j,0) - 4*u(i+1,j,0) + 6*u(i,j,0) - 4*u(i-1,j,0) + u(i-2,j,0))/ double(dx);
+           d4pdx4 = (u(i+2,j,0) - four*u(i+1,j,0) + six*u(i,j,0) - four*u(i-1,j,0) + u(i-2,j,0))/ double(dx);
 
 //         cout<< "d4pdx4="<< d4pdx4<<endl;
 
-           d4pdy4 = (u(i,j+2,0) - 4*u(i,j+1,0) + 6*u(i,j,0) - 4*u(i,j-1,0) + u(i,j-2,0))/ double(dy);
+           d4pdy4 = (u(i,j+2,0) - four*u(i,j+1,0) + six*u(i,j,0) - four*u(i,j-1,0) + u(i,j-2,0))/ double(dy);
 
 //         cout<< "d4pdy4="<< d4pdy4<<endl;
 
@@ -1083,8 +1083,8 @@ void SGS_forward_sweep( Array3& u, Array2& viscx, Array2& viscy, Array2& dt, Arr
      dvdx = (u(i+1,j,2)-u(i-1,j,2))/(two*dx); //v velocity derivatives
      dvdy = (u(i,j+1,2)-u(i,j-1,2))/(two*dy);
 
-     d2vdx2 = (u(i+1,j,2)-2*u(i,j,2)+u(i-1,j,2))/(dx*dx);
-     d2vdy2 = (u(i,j+1,2)-2*u(i,j,2)+u(i,j-1,2))/(dy*dy);
+     d2vdx2 = (u(i+1,j,2)-two*u(i,j,2)+u(i-1,j,2))/(dx*dx);
+     d2vdy2 = (u(i,j+1,2)-two*u(i,j,2)+u(i,j-1,2))/(dy*dy);
      // ----continuity equation----------
      double continuity_it_resid = (rho*dudx) + (rho*dvdy) - viscx(i,j) - viscy(i,j) - s(i,j,0); //steady-state iterative residual for continuity equation
 
@@ -1152,14 +1152,14 @@ void SGS_backward_sweep( Array3& u, Array2& viscx, Array2& viscy, Array2& dt, Ar
      dudx = (u(i+1,j,1)-u(i-1,j,1))/(two*dx); //u velocity derivatives
      dudy = (u(i,j+1,1)-u(i,j-1,1))/(two*dy);
 
-     d2udx2 = (u(i+1,j,1)-2*u(i,j,1)+u(i-1,j,1))/(dx*dx);
-     d2udy2 = (u(i,j+1,1)-2*u(i,j,1)+u(i,j-1,1))/(dy*dy);
+     d2udx2 = (u(i+1,j,1)-two*u(i,j,1)+u(i-1,j,1))/(dx*dx);
+     d2udy2 = (u(i,j+1,1)-two*u(i,j,1)+u(i,j-1,1))/(dy*dy);
 
      dvdx = (u(i+1,j,2)-u(i-1,j,2))/(two*dx); //v velocity derivatives
      dvdy = (u(i,j+1,2)-u(i,j-1,2))/(two*dy);
 
-     d2vdx2 = (u(i+1,j,2)-2*u(i,j,2)+u(i-1,j,2))/(dx*dx);
-     d2vdy2 = (u(i,j+1,2)-2*u(i,j,2)+u(i,j-1,2))/(dy*dy);
+     d2vdx2 = (u(i+1,j,2)-two*u(i,j,2)+u(i-1,j,2))/(dx*dx);
+     d2vdy2 = (u(i,j+1,2)-two*u(i,j,2)+u(i,j-1,2))/(dy*dy);
  
      // ----continuity equation----------
      double continuity_it_resid = (rho*dudx) + (rho*dvdy) - viscx(i,j) - viscy(i,j) - s(i,j,0); //steady-state iterative residual for continuity equation
@@ -1230,11 +1230,11 @@ for(int i=1; i<imax-1; i++){
             dvdx = (uold(i+1,j,2)-uold(i-1,j,2))/(two*dx);
             dvdy = (uold(i,j+1,2)-uold(i,j-1,2))/(two*dy);
 
-            d2udx2 = (uold(i+1,j,1)-2*uold(i,j,1)+uold(i-1,j,1))/pow2(dx);
-            d2udy2 = (uold(i,j+1,1)-2*uold(i,j,1)+uold(i,j-1,1))/pow2(dy);
+            d2udx2 = (uold(i+1,j,1)-two*uold(i,j,1)+uold(i-1,j,1))/pow2(dx);
+            d2udy2 = (uold(i,j+1,1)-two*uold(i,j,1)+uold(i,j-1,1))/pow2(dy);
 
-            d2vdx2 = (uold(i+1,j,2)-2*uold(i,j,2)+uold(i-1,j,2))/pow2(dx);
-            d2vdy2 = (uold(i,j+1,2)-2*uold(i,j,2)+uold(i,j-1,2))/pow2(dy);
+            d2vdx2 = (uold(i+1,j,2)-two*uold(i,j,2)+uold(i-1,j,2))/pow2(dx);
+            d2vdy2 = (uold(i,j+1,2)-two*uold(i,j,2)+uold(i,j-1,2))/pow2(dy);
 
             uvel2 = pow2(u(i,j,1)) + pow2(u(i,j,2));
 
@@ -1246,9 +1246,9 @@ for(int i=1; i<imax-1; i++){
 
             u(i,j,2) = uold(i,j,2) - ((dt(i,j)*rhoinv)*((rho*uold(i,j,1)*dvdx) + (rho*uold(i,j,2)*dvdy) +(dpdy)-(rmu *d2vdx2)-(rmu*d2vdy2)-s(i,j,2)));
 
-            /*cout<< "p="<< u(i,j,0)<<endl;
-            cout<< "u="<< u(i,j,1)<<endl;
-            cout<< "v="<< u(i,j,2)<<endl;*/
+            //cout<< "p="<< u(i,j,0)<<endl;
+            //cout<< "u="<< u(i,j,1)<<endl;
+            //cout<< "v="<< u(i,j,2)<<endl;
 
         }
 }
@@ -1320,15 +1320,12 @@ void check_iterative_convergence(int n, Array3& u, Array3& uold, Array2& dt, dou
   double beta2;
   double uvel2;
 
-  double sumres0 =0.0; /*Stores sum of all res[0]*/
-  double sumres1 =0.0; /*Stores sum of all res[1]*/
-  double sumres2 =0.0; /*Stores sum of all res[2]*/
+  double local_resid = 0.0; /*Stores sum of all res[0]*/
   
-  double norm_continuity;
+  double norm_continuity; /* Norms of the equations */
   double norm_xmomentum;
   double norm_ymomentum;
 
-  double sumsqresinit=0; /* Determines max sumres and squares it*/
   double L2Norminit =0; /*To Calculate initial L2norm*/
 
 /* !************************************************************** */
@@ -1338,7 +1335,7 @@ void check_iterative_convergence(int n, Array3& u, Array3& uold, Array2& dt, dou
         for(j=1; j<jmax-1; j++){
             for (k=0; k<neq; k++){
                
-                /*cout<<"Pressure: "<<"new:"<<u(i,j,0)<<"\t"<<"old:"<<uold(i,j,0)<<endl;
+               /* cout<<"Pressure: "<<"new:"<<u(i,j,0)<<"\t"<<"old:"<<uold(i,j,0)<<endl;
                 cout<<"U-Velocity: "<<"new:"<<u(i,j,1)<<"\t"<<"old:"<<uold(i,j,1)<<endl;
                 cout<<"V-Velocity: "<<"new:"<<u(i,j,2)<<"\t"<<"old:"<<uold(i,j,2)<<endl;*/
                 
@@ -1349,21 +1346,21 @@ void check_iterative_convergence(int n, Array3& u, Array3& uold, Array2& dt, dou
 
      	            beta2 = fmax(uvel2,rkappa*uinf);
 
-                    res[k] = (u(i,j,0)-uold(i,j,0)) / (-beta2*dt(i,j)); 
+                    local_resid = (u(i,j,0)-uold(i,j,0)) / (-beta2*dt(i,j)); 
                     //cout << "Beta2 value(for continuity): "<<beta2<<endl; 
                     //cout << "time step(for continuity): "<<dt(i,j)<<endl; 
             //        cout<<"local continuity residual: "<<res[k]<<endl;
-                    sumres0 += pow2(fabs(res[k]));
+                    res[k] += pow2(fabs(local_resid));
 
                 }else if (k==1){ //x-momentum equation
-                    res[k] = -rho*(u(i,j,1)-uold(i,j,1)) / dt(i,j); 
+                    local_resid = -rho*(u(i,j,1)-uold(i,j,1)) / dt(i,j); 
           //          cout<<"local x-momentum residual: "<<res[k]<<endl;
-                    sumres1 += pow2(fabs(res[k]));
+                    res[k] += pow2(fabs(local_resid));
 
                 }else if (k==2){ //y-momentum equation
-                    res[k] = -rho*(u(i,j,2)-uold(i,j,2)) / dt(i,j); 
+                    local_resid = -rho*(u(i,j,2)-uold(i,j,2)) / dt(i,j); 
         //            cout<<"local y-momentum residual: "<<res[k]<<endl;
-                    sumres2 += pow2(fabs(res[k]));
+                    res[k] += pow2(fabs(local_resid));
                 }
                 
                 }
@@ -1372,20 +1369,20 @@ void check_iterative_convergence(int n, Array3& u, Array3& uold, Array2& dt, dou
         }
 
         //Norms of each equation
-	norm_continuity = sqrt(sumres0/(imax*jmax));
-        norm_xmomentum = sqrt(sumres1/(imax*jmax));
-        norm_ymomentum = sqrt(sumres2/(imax*jmax));
+	norm_continuity = sqrt(res[0]/(imax*jmax));
+        norm_xmomentum = sqrt(res[1]/(imax*jmax));
+        norm_ymomentum = sqrt(res[2]/(imax*jmax));
 
-        cout<<"Continuity iterative residual L2 norm: "<<norm_continuity<<endl;
-        cout<<"X-Momentum iterative residual L2 norm: "<<norm_xmomentum<<endl;
-        cout<<"Y-Momentum iterative residual L2 norm: "<<norm_ymomentum<<endl;
+        //cout<<"Continuity iterative residual L2 norm: "<<norm_continuity<<endl;
+        //cout<<"X-Momentum iterative residual L2 norm: "<<norm_xmomentum<<endl;
+        //cout<<"Y-Momentum iterative residual L2 norm: "<<norm_ymomentum<<endl;
 
         L2Norminit = sqrt(pow2(resinit[0])/(imax*jmax));
 
         cout<<"L2Norminit: "<<L2Norminit<<endl;
         conv = fmax(norm_continuity,fmax(norm_xmomentum,norm_ymomentum)) / L2Norminit; /*L2 Norms ratio*/
-        cout<<"conv: "<<conv<<endl;
 
+        cout<<"conv: "<<conv<<endl;
   
   
     /* Write iterative residuals every "residualOut" iterations */
@@ -1429,11 +1426,50 @@ void Discretization_Error_Norms( Array3& u )
 /* !************************************************************** */
 /* !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 /* !************************************************************** */
+      rL1norm[0] = zero; rL1norm[1] = zero; rL1norm[2] = zero;
+      rL2norm[0] = zero; rL2norm[1] = zero; rL2norm[2] = zero;
+      rLinfnorm[0] = zero; rLinfnorm[1] = zero; rLinfnorm[2] = zero;
+      
+      for(y=0;y<jmax-1;y++){  
+        for(x=0;x<imax-1;x++){
+          for(int k=0;k<3;k++){
+
+           //------continuity equation---------
+           if (k==0){ 
+             DE = abs(u(x,y,0) - umms(x,y,0)); 
+             rL1norm[0] += DE;
+             rL2norm[0] += pow2(DE); //L2 norm
+             rLinfnorm[0] = fmax(DE,rLinfnorm[0]); //Linf norm
+           }
+           //------x momentum equation---------
+           if (k==1){ 
+             DE = abs(u(x,y,1) - umms(x,y,1)); 
+             rL1norm[1] += DE;
+             rL2norm[1] += pow2(DE); //L2 norm
+             rLinfnorm[1] = fmax(DE,rLinfnorm[1]); //Linf norm
+           }
+           //------y momentum equation---------
+           if (k==2){
+             DE = abs(u(x,y,2) - umms(x,y,2));
+             rL1norm[2] += DE;
+             rL2norm[2] += pow2(DE); //L2 norm
+             rLinfnorm[2] = fmax(DE,rLinfnorm[2]); //Linf norm
+           }
+    
 
 
-
+          }
+        }
+      }
+    rL1norm[0] = sqrt(rL1norm[0] / (imax*jmax)); rL1norm[1] = sqrt(rL1norm[1] / (imax*jmax)); rL1norm[2] = sqrt(rL1norm[2] / (imax*jmax)); //
+    rL2norm[0] = sqrt(rL2norm[0] / (imax*jmax)); rL2norm[1] = sqrt(rL2norm[1] / (imax*jmax)); rL2norm[2] = sqrt(rL2norm[2] / (imax*jmax)); //
 
     }
+    cout<<"Continuity DE Norms:\n"<<endl;
+    cout<<"L1Norm: "<<rL1norm[0]<<" L2Norm: "<<rL2norm[0]<<" LinfNorm: "<<rLinfnorm[0]<<endl; cout<<"X-Momentum DE Norms:\n"<<endl;
+    cout<<"L1Norm: "<<rL1norm[1]<<" L2Norm: "<<rL2norm[1]<<" LinfNorm: "<<rLinfnorm[1]<<endl;
+    cout<<"Y-Momentum DE Norms:\n"<<endl;
+    cout<<"L1Norm: "<<rL1norm[2]<<" L2Norm: "<<rL2norm[2]<<" LinfNorm: "<<rLinfnorm[2]<<endl;
 }
 
 /********************************************************************************************************************/
