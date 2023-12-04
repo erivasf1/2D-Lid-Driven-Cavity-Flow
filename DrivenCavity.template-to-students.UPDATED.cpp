@@ -1418,6 +1418,14 @@ void Discretization_Error_Norms( Array3& u )
     double rL1norm[neq];
     double rL2norm[neq]; 
     double rLinfnorm[neq];
+    
+    double rL1[neq];
+    double rL2[neq];
+    double rLinf[neq];
+
+    int i;
+    int j;
+    int k;
 
     /* Only compute discretization error norms for manufactured solution */
     if(imms==1)
@@ -1426,49 +1434,48 @@ void Discretization_Error_Norms( Array3& u )
 /* !************************************************************** */
 /* !************ADD CODING HERE FOR INTRO CFD STUDENTS************ */
 /* !************************************************************** */
-      rL1norm[0] = zero; rL1norm[1] = zero; rL1norm[2] = zero;
-      rL2norm[0] = zero; rL2norm[1] = zero; rL2norm[2] = zero;
-      rLinfnorm[0] = zero; rLinfnorm[1] = zero; rLinfnorm[2] = zero;
-      
-      for(y=0;y<jmax-1;y++){  
-        for(x=0;x<imax-1;x++){
-          for(int k=0;k<3;k++){
+/* Initialize error norms*/
 
-           //------continuity equation---------
-           if (k==0){ 
-             DE = abs(u(x,y,0) - umms(x,y,0)); 
-             rL1norm[0] += DE;
-             rL2norm[0] += pow2(DE); //L2 norm
-             rLinfnorm[0] = fmax(DE,rLinfnorm[0]); //Linf norm
-           }
-           //------x momentum equation---------
-           if (k==1){ 
-             DE = abs(u(x,y,1) - umms(x,y,1)); 
-             rL1norm[1] += DE;
-             rL2norm[1] += pow2(DE); //L2 norm
-             rLinfnorm[1] = fmax(DE,rLinfnorm[1]); //Linf norm
-           }
-           //------y momentum equation---------
-           if (k==2){
-             DE = abs(u(x,y,2) - umms(x,y,2));
-             rL1norm[2] += DE;
-             rL2norm[2] += pow2(DE); //L2 norm
-             rLinfnorm[2] = fmax(DE,rLinfnorm[2]); //Linf norm
-           }
-    
-
-
-          }
-        }
+      for (int k = 0; k < neq; k++) {
+        rL1norm[k] = 0.0;
+        rL2norm[k] = 0.0;
+        rLinfnorm[k] = 0.0;
       }
-    rL1norm[0] = sqrt(rL1norm[0] / (imax*jmax)); rL1norm[1] = sqrt(rL1norm[1] / (imax*jmax)); rL1norm[2] = sqrt(rL1norm[2] / (imax*jmax)); //
-    rL2norm[0] = sqrt(rL2norm[0] / (imax*jmax)); rL2norm[1] = sqrt(rL2norm[1] / (imax*jmax)); rL2norm[2] = sqrt(rL2norm[2] / (imax*jmax)); //
 
-    }
-    cout<<"Continuity DE Norms:\n"<<endl;
-    cout<<"L1Norm: "<<rL1norm[0]<<" L2Norm: "<<rL2norm[0]<<" LinfNorm: "<<rLinfnorm[0]<<endl; cout<<"X-Momentum DE Norms:\n"<<endl;
-    cout<<"L1Norm: "<<rL1norm[1]<<" L2Norm: "<<rL2norm[1]<<" LinfNorm: "<<rLinfnorm[1]<<endl;
-    cout<<"Y-Momentum DE Norms:\n"<<endl;
+      for(int i=1; i<imax-1; i++)
+      {
+        for(int j=1; j<jmax-1; j++)
+        {
+            x = (xmax - xmin)*(double)(i)/(double)(imax - 1);
+            y = (ymax - ymin)*(double)(j)/(double)(jmax - 1);
+
+            /*Calculating Discretization Error*/
+            for(int k = 0; k<neq; k++)
+            DE = fabs(u(i,j,k)- umms(x,y,k));
+
+            /*Calculating Error Norms*/
+
+            rL1[k] += DE;
+            rL2[k] += pow2(DE);
+            rLinf[k] = fmax(rLinf[k], DE);
+
+        }
+     }
+     /*Calculating norm*/
+     for (int k=0; k < neq; k++){
+       rL1norm[k]= rL1[k]/(imax * jmax);
+       rL2norm[k]= sqrt(rL2[k]/(imax*jmax));
+       rLinfnorm[k] = rLinf[k];
+
+
+     }
+
+
+   }
+   cout<<"Continuity DE Norms:\n"<<endl;
+   cout<<"L1Norm: "<<rL1norm[0]<<" L2Norm: "<<rL2norm[0]<<" LinfNorm: "<<rLinfnorm[0]<<endl; cout<<"X-Momentum DE Norms:\n"<<endl;
+   cout<<"L1Norm: "<<rL1norm[1]<<" L2Norm: "<<rL2norm[1]<<" LinfNorm: "<<rLinfnorm[1]<<endl;
+   cout<<"Y-Momentum DE Norms:\n"<<endl;
     cout<<"L1Norm: "<<rL1norm[2]<<" L2Norm: "<<rL2norm[2]<<" LinfNorm: "<<rLinfnorm[2]<<endl;
 }
 
