@@ -11,8 +11,8 @@
 using namespace std;
 
 /************* Following are fixed parameters for array sizes **************/
-#define imax 33     /* Number of points in the x-direction (use odd numbers only) */
-#define jmax 33     /* Number of points in the y-direction (use odd numbers only) */
+#define imax 119     /* Number of points in the x-direction (use odd numbers only) */
+#define jmax 119     /* Number of points in the y-direction (use odd numbers only) */
 #define neq 3       /* Number of equation to be solved ( = 3: mass, x-mtm, y-mtm) */
 
 /**********************************************/
@@ -40,21 +40,21 @@ using namespace std;
   
 /*--------- User sets inputs here  --------*/
 
-  const int nmax = 1000000;             /* Maximum number of iterations */
+  const int nmax = 100000000;             /* Maximum number of iterations */
   const int iterout = 500;             /* Number of time steps between solution output */
-  const int imms = 1;                   /* Manufactured solution flag: = 1 for manuf. sol., = 0 otherwise */
+  const int imms = 0;                   /* Manufactured solution flag: = 1 for manuf. sol., = 0 otherwise */
   const int isgs = 1;                   /* Symmetric Gauss-Seidel  flag: = 1 for SGS, = 0 for point Jacobi */
   const int irstr = 0;                  /* Restart flag: = 1 for restart (file 'restart.in', = 0 for initial run */
   const int ipgorder = 0;               /* Order of pressure gradient: 0 = 2nd, 1 = 3rd (not needed) */
   const int lim = 0;                    /* variable to be used as the limiter sensor (= 0 for pressure) */
   const int residualOut = 10;           /* Number of timesteps between residual output */
 
-  const double cfl  = 0.2;              /* CFL number used to determine time step */
+  const double cfl  = 0.8;              /* CFL number used to determine time step */
   const double Cx = 0.0625;               /* Parameter for 4th order artificial viscosity in x */
   const double Cy = 0.0625;               /* Parameter for 4th order artificial viscosity in y */
   const double toler = 1.e-10;          /* Tolerance for iterative residual convergence */
   const double rkappa = 0.1;            /* Time derivative preconditioning constant */
-  const double Re = 10.0;              /* Reynolds number = rho*Uinf*L/rmu */
+  const double Re = 100.0;              /* Reynolds number = rho*Uinf*L/rmu */
   const double pinf = 0.801333844662;   /* Initial pressure (N/m^2) -> from MMS value at cavity center */
   const double uinf = 1.0;              /* Lid velocity (m/s) */
   const double rho = 1.0;               /* Density (kg/m^3) */
@@ -1322,9 +1322,6 @@ void check_iterative_convergence(int n, Array3& u, Array3& uold, Array2& dt, dou
 
   double local_resid = 0.0; /*Stores sum of all res[0]*/
   
-  double norm_continuity; /* Norms of the equations */
-  double norm_xmomentum;
-  double norm_ymomentum;
 
   double L2Norminit =0; /*To Calculate initial L2norm*/
 
@@ -1342,7 +1339,7 @@ void check_iterative_convergence(int n, Array3& u, Array3& uold, Array2& dt, dou
                 if(k==0){ //continuity equation
 
                     //time preconditioning term
-	            uvel2 = u(i,j,1)* u(i,j,1) + u(i,j,2)* u(i,j,2);
+	            uvel2 = pow2(u(i,j,1)) + pow2(u(i,j,2));
 
      	            beta2 = fmax(uvel2,rkappa*uinf);
 
@@ -1369,9 +1366,9 @@ void check_iterative_convergence(int n, Array3& u, Array3& uold, Array2& dt, dou
         }
 
         //Norms of each equation
-	norm_continuity = sqrt(res[0]/(imax*jmax));
-        norm_xmomentum = sqrt(res[1]/(imax*jmax));
-        norm_ymomentum = sqrt(res[2]/(imax*jmax));
+	res[0] = sqrt(res[0]/(imax*jmax)); //continuity norm
+        res[1] = sqrt(res[1]/(imax*jmax)); //x-momentum norm
+        res[2] = sqrt(res[2]/(imax*jmax)); //y-momentum norm
 
         //cout<<"Continuity iterative residual L2 norm: "<<norm_continuity<<endl;
         //cout<<"X-Momentum iterative residual L2 norm: "<<norm_xmomentum<<endl;
@@ -1380,7 +1377,7 @@ void check_iterative_convergence(int n, Array3& u, Array3& uold, Array2& dt, dou
         L2Norminit = sqrt(pow2(resinit[0])/(imax*jmax));
 
         cout<<"L2Norminit: "<<L2Norminit<<endl;
-        conv = fmax(norm_continuity,fmax(norm_xmomentum,norm_ymomentum)) / L2Norminit; /*L2 Norms ratio*/
+        conv = fmax(res[0],fmax(res[1],res[2])) / L2Norminit; /*L2 Norms ratio*/
 
         cout<<"conv: "<<conv<<endl;
   
