@@ -11,8 +11,8 @@
 using namespace std;
 
 /************* Following are fixed parameters for array sizes **************/
-#define imax 119     /* Number of points in the x-direction (use odd numbers only) */
-#define jmax 119     /* Number of points in the y-direction (use odd numbers only) */
+#define imax 251     /* Number of points in the x-direction (use odd numbers only) */
+#define jmax 251     /* Number of points in the y-direction (use odd numbers only) */
 #define neq 3       /* Number of equation to be solved ( = 3: mass, x-mtm, y-mtm) */
 
 /**********************************************/
@@ -40,9 +40,9 @@ using namespace std;
   
 /*--------- User sets inputs here  --------*/
 
-  const int nmax = 100000000;             /* Maximum number of iterations */
+  const int nmax = 1000000000;             /* Maximum number of iterations */
   const int iterout = 500;             /* Number of time steps between solution output */
-  const int imms = 0;                   /* Manufactured solution flag: = 1 for manuf. sol., = 0 otherwise */
+  const int imms = 1;                   /* Manufactured solution flag: = 1 for manuf. sol., = 0 otherwise */
   const int isgs = 1;                   /* Symmetric Gauss-Seidel  flag: = 1 for SGS, = 0 for point Jacobi */
   const int irstr = 0;                  /* Restart flag: = 1 for restart (file 'restart.in', = 0 for initial run */
   const int ipgorder = 0;               /* Order of pressure gradient: 0 = 2nd, 1 = 3rd (not needed) */
@@ -50,11 +50,11 @@ using namespace std;
   const int residualOut = 10;           /* Number of timesteps between residual output */
 
   const double cfl  = 0.8;              /* CFL number used to determine time step */
-  const double Cx = 0.0625;               /* Parameter for 4th order artificial viscosity in x */
-  const double Cy = 0.0625;               /* Parameter for 4th order artificial viscosity in y */
+  const double Cx = 0.01;               /* Parameter for 4th order artificial viscosity in x */
+  const double Cy = 0.01;               /* Parameter for 4th order artificial viscosity in y */
   const double toler = 1.e-10;          /* Tolerance for iterative residual convergence */
   const double rkappa = 0.1;            /* Time derivative preconditioning constant */
-  const double Re = 100.0;              /* Reynolds number = rho*Uinf*L/rmu */
+  const double Re = 10.0;              /* Reynolds number = rho*Uinf*L/rmu */
   const double pinf = 0.801333844662;   /* Initial pressure (N/m^2) -> from MMS value at cavity center */
   const double uinf = 1.0;              /* Lid velocity (m/s) */
   const double rho = 1.0;               /* Density (kg/m^3) */
@@ -969,10 +969,10 @@ for(j=2; j<jmax-2; j++) //for nodes interior of the nodes closest to the wall!
 
 //         cout<< "d4pdy4="<< d4pdy4<<endl;
 
-           viscx(i,j) = (-fabs(lambda_x)* Cx *double(dx*dx*dx)*d4pdx4)/beta2;
+           viscx(i,j) = (-fabs(lambda_x)* Cx *d4pdx4)/beta2;
 
 
-           viscy(i,j) = (-fabs(lambda_y)* Cy *double(dy*dy*dy)*d4pdy4)/beta2;
+           viscy(i,j) = (-fabs(lambda_y)* Cy *d4pdy4)/beta2;
 
 //        cout<< "viscx="<< viscx(i,j)<<endl;
 //        cout<< "viscy="<< viscy(i,j)<<endl;
@@ -1347,18 +1347,16 @@ void check_iterative_convergence(int n, Array3& u, Array3& uold, Array2& dt, dou
                     //cout << "Beta2 value(for continuity): "<<beta2<<endl; 
                     //cout << "time step(for continuity): "<<dt(i,j)<<endl; 
             //        cout<<"local continuity residual: "<<res[k]<<endl;
-                    res[k] += pow2(fabs(local_resid));
 
                 }else if (k==1){ //x-momentum equation
                     local_resid = -rho*(u(i,j,1)-uold(i,j,1)) / dt(i,j); 
           //          cout<<"local x-momentum residual: "<<res[k]<<endl;
-                    res[k] += pow2(fabs(local_resid));
 
                 }else if (k==2){ //y-momentum equation
                     local_resid = -rho*(u(i,j,2)-uold(i,j,2)) / dt(i,j); 
         //            cout<<"local y-momentum residual: "<<res[k]<<endl;
-                    res[k] += pow2(fabs(local_resid));
                 }
+                res[k] += pow2(fabs(local_resid));
                 
                 }
             }
@@ -1366,9 +1364,9 @@ void check_iterative_convergence(int n, Array3& u, Array3& uold, Array2& dt, dou
         }
 
         //Norms of each equation
-	res[0] = sqrt(res[0]/(imax*jmax)); //continuity norm
-        res[1] = sqrt(res[1]/(imax*jmax)); //x-momentum norm
-        res[2] = sqrt(res[2]/(imax*jmax)); //y-momentum norm
+	res[0] = sqrt(res[0]/ double(imax*jmax)); //continuity norm
+        res[1] = sqrt(res[1]/ double(imax*jmax)); //x-momentum norm
+        res[2] = sqrt(res[2]/ double(imax*jmax)); //y-momentum norm
 
         //cout<<"Continuity iterative residual L2 norm: "<<norm_continuity<<endl;
         //cout<<"X-Momentum iterative residual L2 norm: "<<norm_xmomentum<<endl;
@@ -1447,18 +1445,19 @@ void Discretization_Error_Norms( Array3& u )
             y = (ymax - ymin)*(double)(j)/(double)(jmax - 1);
 
             /*Calculating Discretization Error*/
-            for(int k = 0; k<neq; k++)
-            DE = fabs(u(i,j,k)- umms(x,y,k));
+            for(int k = 0; k<neq; k++) {
+              DE = fabs(u(i,j,k)- umms(x,y,k));
 
-            /*Calculating Error Norms*/
+              /*Calculating Error */
 
-            rL1[k] += DE;
-            rL2[k] += pow2(DE);
-            rLinf[k] = fmax(rLinf[k], DE);
+              rL1[k] += DE;
+              rL2[k] += pow2(DE);
+              rLinf[k] = fmax(rLinf[k], DE);
+            }
 
         }
      }
-     /*Calculating norm*/
+     /*Norm Calculation*/
      for (int k=0; k < neq; k++){
        rL1norm[k]= rL1[k]/(imax * jmax);
        rL2norm[k]= sqrt(rL2[k]/(imax*jmax));
@@ -1469,11 +1468,9 @@ void Discretization_Error_Norms( Array3& u )
 
 
    }
-   cout<<"Continuity DE Norms:\n"<<endl;
-   cout<<"L1Norm: "<<rL1norm[0]<<" L2Norm: "<<rL2norm[0]<<" LinfNorm: "<<rLinfnorm[0]<<endl; cout<<"X-Momentum DE Norms:\n"<<endl;
-   cout<<"L1Norm: "<<rL1norm[1]<<" L2Norm: "<<rL2norm[1]<<" LinfNorm: "<<rLinfnorm[1]<<endl;
-   cout<<"Y-Momentum DE Norms:\n"<<endl;
-    cout<<"L1Norm: "<<rL1norm[2]<<" L2Norm: "<<rL2norm[2]<<" LinfNorm: "<<rLinfnorm[2]<<endl;
+   cout<<"Continuity DE Norms:\n"<<endl;cout<<"L1Norm: "<<rL1norm[0]<<" L2Norm: "<<rL2norm[0]<<" LinfNorm: "<<rLinfnorm[0]<<endl; 
+   cout<<"X-Momentum DE Norms:\n"<<endl;cout<<"L1Norm: "<<rL1norm[1]<<" L2Norm: "<<rL2norm[1]<<" LinfNorm: "<<rLinfnorm[1]<<endl;
+   cout<<"Y-Momentum DE Norms:\n"<<endl;cout<<"L1Norm: "<<rL1norm[2]<<" L2Norm: "<<rL2norm[2]<<" LinfNorm: "<<rLinfnorm[2]<<endl;
 }
 
 /********************************************************************************************************************/
