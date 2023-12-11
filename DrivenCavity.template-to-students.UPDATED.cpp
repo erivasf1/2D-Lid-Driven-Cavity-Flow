@@ -42,7 +42,7 @@ using namespace std;
 
   const int nmax = 1000000000;             /* Maximum number of iterations */
   const int iterout = 500;             /* Number of time steps between solution output */
-  const int imms = 1;                   /* Manufactured solution flag: = 1 for manuf. sol., = 0 otherwise */
+  const int imms = 0;                   /* Manufactured solution flag: = 1 for manuf. sol., = 0 otherwise */
   const int isgs = 1;                   /* Symmetric Gauss-Seidel  flag: = 1 for SGS, = 0 for point Jacobi */
   const int irstr = 0;                  /* Restart flag: = 1 for restart (file 'restart.in', = 0 for initial run */
   const int ipgorder = 0;               /* Order of pressure gradient: 0 = 2nd, 1 = 3rd (not needed) */
